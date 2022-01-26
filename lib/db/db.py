@@ -1,13 +1,16 @@
 import psycopg2
+from os.path import isfile
 
 DB_PATH = './data/db/database.db'
-BUILD_PATH = ''
 
 DB_HOST = 'localhost'
 DB_NAME = 'cicero_bot_DB'
 DB_USER = 'David'
 DB_PASS = 'Python123'
 port_id = 6969
+
+SCRIPT_PATH = '../../data/db'
+filename = 'fetch_data.sql'
 
 conn = psycopg2.connect(host=DB_HOST, dbname=DB_NAME, user=DB_USER,
                         password=DB_PASS, port=port_id)
@@ -23,7 +26,8 @@ def with_commit(func):
 
 @with_commit
 def build():
-    scriptexec()
+    if isfile(BUILD_PATH:=SCRIPT_PATH+'/'+filename):
+        scriptexec(BUILD_PATH)
 
 def commit():
     conn.commit()

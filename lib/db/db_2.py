@@ -1,6 +1,6 @@
 import psycopg2
 
-script_path = '../data/db'
+script_path = '../../data/db'
 
 DB_HOST = 'localhost'
 DB_NAME = 'cicero_bot_DB'
