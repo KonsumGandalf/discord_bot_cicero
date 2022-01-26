@@ -1,0 +1,1 @@
+SELECT * FROM "cicero_bot_DB".public."Factions"
