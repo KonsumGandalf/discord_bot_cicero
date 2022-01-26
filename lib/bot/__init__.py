@@ -1,9 +1,9 @@
 import os
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from discord import Embed
-from discord import Intents
+from discord import Embed, File, Intents
 from discord.ext.commands import Bot as BotBase
+from discord.ext.commands import CommandNotFound
 
 PREFIX = '!'
 OWNER_IDS = [263363960764497931]
@@ -42,6 +42,23 @@ class CiceroBot(BotBase):
     async def on_disconnect(self):
         print('disconnceted')
 
+    async def on_error(self, event_method, *args, **kwargs):
+        if event_method == 'on_command_error':
+            channel = args[0]
+            await channel.send('Something went wrong.')
+        channel = self.get_channel(935861210581188638)
+        await channel.send('General Error occurred')
+        raise
+
+    async def on_command_error(self, context, exception):
+        if isinstance(context, CommandNotFound):
+            pass
+        elif hasattr(exception, 'original'):
+            raise exception.original
+
+        else:
+            raise exception
+
     async def on_ready(self):
         if not self.ready:
             self.ready = True
@@ -59,6 +76,8 @@ class CiceroBot(BotBase):
             embed.set_author(name='David', icon_url=self.guild.icon_url)
             embed.set_footer(text='This is a footer!')
             await channel.send(embed=embed)
+
+            await channel.send(files=[File('./data/images/gold.png')])
         else:
             print('bot reconnect')
 
