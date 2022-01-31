@@ -22,14 +22,15 @@ except Exception as error:
 def script_read(filename):
     path = script_path + '/' + filename
     with open(path, 'r', encoding='utf-8') as script:
-        lines = script.read()
-    return lines
+        return script.read()
 
 
 def operate_on_table():
-    script_read('fetch_data.sql')
     cur.execute(script_read('fetch_data.sql'))
     print(cur.fetchall())
+
+    cur.execute(script_read('build_action.sql'))
+    conn.commit()
 
 
 def main():

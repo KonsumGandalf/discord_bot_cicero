@@ -1,9 +1,14 @@
 import os
+from glob import glob
+from asyncio import sleep
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
 from discord import Embed, File, Intents
 from discord.ext.commands import Bot as BotBase
 from discord.ext.commands import CommandNotFound
+
+from ..db import db
 
 PREFIX = '!'
 OWNER_IDS = [263363960764497931]
@@ -12,16 +17,41 @@ CHANNEL_IDS = 935848953885368340
 __location__ = os.path.realpath(
     os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
+COGS = [path.split('\\')[-1][:-3] for path in glob('lib/cogs/*.py')]
+# split: 'lib/cogs\\fun.py' => 'fun.py'
+# [-1][:-3]: 'fun.py' => fun
+
+class Ready(object):
+    """
+    Python docs:
+    setattr(x, 'foobar', 123) is equivalent to x.foobar = 123.
+    """
+
+    def __init__(self):
+        for cog in COGS:
+            setattr(self, cog, False)
+            # sets all cogs to not ready
+
+    def ready_up(self, cog):
+        setattr(self, cog, True)
+        print(f'cog: {cog} ready')
+
+    def all_ready(self):
+        return all([getattr(self, cog) for cog in COGS])
 
 class CiceroBot(BotBase):
     VERSION: str | int
     TOKEN: any
+    channel: any
 
     def __init__(self):
         self.PREFIX = PREFIX
         self.ready = False
         self.guild = None
-        self.scheduler = AsyncIOScheduler()
+        self.cogs_ready = Ready()
+        self.scheduler = AsyncIOScheduler(timezone='Europe/Berlin')
+
+        db.autosave(self.scheduler)
 
         super().__init__(
             command_prefix=PREFIX,
@@ -29,25 +59,32 @@ class CiceroBot(BotBase):
             intents=Intents.all(),
         )
 
+    def setup(self):
+        for cog in COGS:
+            self.load_extension(f'lib.cogs.{cog}')
+            print(f'{cog} cog loaded')
+
     def run(self, version='0.0.0'):
         self.VERSION = version
+
+        self.setup()
+
         with open(os.path.join(__location__, 'token.txt'), 'r', encoding='utf-8') as tokenFile:
             self.TOKEN = tokenFile.read()
 
         super().run(self.TOKEN, reconnect=True)
 
     async def on_connect(self):
-        print('connceted')
+        print('connected')
 
     async def on_disconnect(self):
-        print('disconnceted')
+        print('disconnected')
 
     async def on_error(self, event_method, *args, **kwargs):
         if event_method == 'on_command_error':
-            channel = args[0]
-            await channel.send('Something went wrong.')
-        channel = self.get_channel(935861210581188638)
-        await channel.send('General Error occurred')
+            error_channel = args[0]
+            await error_channel.send('Something went wrong.')
+        await self.channel.send('General Error occurred')
         raise
 
     async def on_command_error(self, context, exception):
@@ -61,14 +98,14 @@ class CiceroBot(BotBase):
 
     async def on_ready(self):
         if not self.ready:
-            self.ready = True
             self.guild = self.get_guild(GUILD_IDS)
-            print('ready_to_read')
+            self.channel = self.get_channel(CHANNEL_IDS)
+            self.scheduler.add_job(self.send_message, 'cron',  day_of_week="mon-fri", second='0,10,20,30')
+            self.scheduler.start()
+            print('__init__ on ready')
 
-            channel = self.get_channel(CHANNEL_IDS)
-            await channel.send('Now online!')
 
-            embed = Embed(title='Now online', description='Cicero is willed to help you.')
+            """embed = Embed(title='Now online', description='Cicero is willed to help you.')
             fields = [('Name', 'Value', True),
                       ('Another field', 'This is the value', False)]
             for name, value, inline_val in fields:
@@ -77,12 +114,23 @@ class CiceroBot(BotBase):
             embed.set_footer(text='This is a footer!')
             await channel.send(embed=embed)
 
-            await channel.send(files=[File('./data/images/gold.png')])
+            await channel.send(files=[File('./data/images/gold.png')])"""
+            while not self.cogs_ready.all_ready():
+                print('wait')
+                await sleep(0.5)
+
+            await self.channel.send('Now online!')
+            self.ready = True
         else:
             print('bot reconnect')
 
     async def on_message(self, message):
         print('Message: ', message)
 
+    async def battle_reminder(self):
+        await self.channel.send('Remember to add your battle statistics')
+
+    async def send_message(self):
+        await self.channel.send('timed_send: okay lets go baby baby')
 
 bot = CiceroBot()
