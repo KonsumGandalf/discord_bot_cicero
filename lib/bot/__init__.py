@@ -5,7 +5,7 @@ from asyncio import sleep
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from discord import Embed, File, Intents
-from discord.ext.commands import Bot as BotBase
+from discord.ext.commands import Bot as BotBase, Context
 from discord.ext.commands import CommandNotFound
 
 from ..db import db
@@ -74,6 +74,17 @@ class CiceroBot(BotBase):
 
         super().run(self.TOKEN, reconnect=True)
 
+    async def process_commands(self, message):
+        ctx = await self.get_context(message, cls=Context)
+
+        if ctx.command is not None and ctx.guild is not None:
+            if self.ready:
+                await self.invoke(ctx)
+
+            else:
+                await ctx.send('Wait cooldown 10 seconds')
+
+
     async def on_connect(self):
         print('connected')
 
@@ -100,7 +111,7 @@ class CiceroBot(BotBase):
         if not self.ready:
             self.guild = self.get_guild(GUILD_IDS)
             self.channel = self.get_channel(CHANNEL_IDS)
-            self.scheduler.add_job(self.send_message, 'cron',  day_of_week="mon-fri", second='0,10,20,30')
+            self.scheduler.add_job(self.send_message, 'cron',  day_of_week="mon-fri", hour='10', second='0,10,20,30')
             self.scheduler.start()
             print('__init__ on ready')
 
@@ -125,7 +136,10 @@ class CiceroBot(BotBase):
             print('bot reconnect')
 
     async def on_message(self, message):
-        print('Message: ', message)
+        if message.author.bot:
+            pass
+        elif not message.author.bot:
+            await self.process_commands(message)
 
     async def battle_reminder(self):
         await self.channel.send('Remember to add your battle statistics')
