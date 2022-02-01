@@ -1,7 +1,7 @@
 from typing import Optional
 
 from discord.ext.commands import Cog, command
-#from discord.ext.menus import MenuPages, ListPageSource
+# from discord.ext.menus import MenuPages, ListPageSource
 from discord.utils import get
 from discord import Embed
 
@@ -72,6 +72,7 @@ class Help(Cog):
         :param cmd:
         :return:
         """
+        print('help is used')
         if cmd is None:
             """menu = MenuPages(source=HelpMenu(ctx, list(self.bot.commands)),
                              delete_message_after=True,

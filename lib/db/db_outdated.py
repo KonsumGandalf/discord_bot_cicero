@@ -29,7 +29,7 @@ def operate_on_table():
     cur.execute(script_read('fetch_data.sql'))
     print(cur.fetchall())
 
-    cur.execute(script_read('build_action.sql'))
+    cur.execute(script_read('elo.sql'))
     conn.commit()
 
 

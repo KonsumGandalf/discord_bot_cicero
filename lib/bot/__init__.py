@@ -5,7 +5,7 @@ from asyncio import sleep
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from discord import Embed, File, Intents
-from discord.ext.commands import Bot as BotBase, Context
+from discord.ext.commands import Bot as BotBase, Context, when_mentioned_or, command, has_permissions
 from discord.ext.commands.errors import CommandNotFound, BadArgument, MissingRequiredArgument, CommandOnCooldown
 from discord.errors import HTTPException, Forbidden
 
@@ -22,6 +22,12 @@ COGS = [path.split('\\')[-1][:-3] for path in glob('lib/cogs/*.py')]
 # split: 'lib/cogs\\fun.py' => 'fun.py'
 # [-1][:-3]: 'fun.py' => fun
 IGNORE_EXCEPTION = [BadArgument]
+
+
+def get_prefix(bot, message):
+    prefix = db.field("SELECT Prefix FROM Guilds WHERE GuildID = ?", message.guild.id)
+    return when_mentioned_or(prefix)(bot, message)
+
 
 class Ready(object):
     """
@@ -41,25 +47,28 @@ class Ready(object):
     def all_ready(self):
         return all([getattr(self, cog) for cog in COGS])
 
+
 class CiceroBot(BotBase):
     VERSION: str | int
     TOKEN: any
     channel: any
 
     def __init__(self):
-        self.PREFIX = PREFIX
         self.ready = False
         self.guild = None
         self.cogs_ready = Ready()
         self.scheduler = AsyncIOScheduler(timezone='Europe/Berlin')
 
         db.autosave(self.scheduler)
-
+        # bot and message obj automatically passed
         super().__init__(
-            command_prefix=PREFIX,
+            command_prefix=get_prefix,
             owner_ids=OWNER_IDS,
             intents=Intents.all(),
         )
+        print(123)
+        print(get_prefix)
+
 
     def setup(self):
         for cog in COGS:
@@ -86,7 +95,6 @@ class CiceroBot(BotBase):
             else:
                 await self.invoke(ctx)
 
-
     async def on_connect(self):
         print('connected')
 
@@ -106,7 +114,8 @@ class CiceroBot(BotBase):
         elif hasattr(exception, 'original'):
             raise exception.original
         elif isinstance(exception, CommandOnCooldown):
-            await context.send(f'Command {str(exception.cooldown.type).split(".")[-1]}on cooldown wait for {exception.retry_after:,.0f} seconds to limit spamming.')
+            await context.send(
+                f'Command {str(exception.cooldown.type).split(".")[-1]}on cooldown wait for {exception.retry_after:,.0f} seconds to limit spamming.')
         elif isinstance(exception, HTTPException):
             await context.send('Unable to send message.')
         elif isinstance(exception, BadArgument):
@@ -122,10 +131,9 @@ class CiceroBot(BotBase):
         if not self.ready:
             self.guild = self.get_guild(GUILD_IDS)
             self.channel = self.get_channel(CHANNEL_IDS)
-            self.scheduler.add_job(self.send_message, 'cron',  day_of_week="mon-fri", hour='10', second='0,10,20,30')
+            self.scheduler.add_job(self.send_message, 'cron', day_of_week="mon-fri", hour='10', second='0,10,20,30')
             self.scheduler.start()
             print('__init__ on ready')
-
 
             """embed = Embed(title='Now online', description='Cicero is willed to help you.')
             fields = [('Name', 'Value', True),
@@ -157,5 +165,6 @@ class CiceroBot(BotBase):
 
     async def send_message(self):
         await self.channel.send('timed_send: okay lets go baby baby')
+
 
 bot = CiceroBot()

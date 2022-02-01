@@ -2,7 +2,7 @@ import psycopg2
 from sqlite3 import connect
 
 from os.path import isfile
-
+from glob import glob
 
 """
 While continuing the project the Postgres DataBase was switched to a SQLite one.
@@ -22,15 +22,16 @@ conn = psycopg2.connect(host=DB_HOST, dbname=DB_NAME, user=DB_USER,
 DB_PATH = 'data/db/database.db'
 
 SCRIPT_PATH = 'data/db'
-filename = 'build_action.sql'
-BUILD_PATH = SCRIPT_PATH+'/'+filename
+filename_prefix = 'elo.sql'
+SQLS = [path for path in glob('data/db/build/*.sql')]
+print(SQLS)
 
 conn = connect(DB_PATH, check_same_thread=False)
 cur = conn.cursor()
-
-with open(BUILD_PATH, 'r', encoding='utf-8') as script:
-    cur.execute(script.read())
-    conn.commit()
+for path_ele in SQLS:
+    with open(path_ele, 'r', encoding='utf-8') as script:
+        cur.executescript(script.read())
+        print(script.read())
 
 def with_commit(func):
     def inner(*args, **kwargs):
@@ -41,17 +42,16 @@ def with_commit(func):
 
 @with_commit
 def build():
-    if isfile(BUILD_PATH):
-        scriptexec(BUILD_PATH)
+    if isfile(SQLS[0]):
+        scriptexec(SQLS[0])
 
 def autosave(sched):
-    print(BUILD_PATH)
     sched.add_job(commit, 'cron',  day_of_week="mon-fri", second='0,10,20,30')
 
 def commit():
     conn.commit()
 
-    scriptexec(BUILD_PATH)
+    scriptexec(SQLS[0])
 
 def close():
     conn.close()
