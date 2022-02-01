@@ -5,7 +5,8 @@ from asyncio import sleep
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from discord import Embed, File, Intents
-from discord.ext.commands import Bot as BotBase, Context, CommandNotFound, BadArgument, MissingRequiredArgument
+from discord.ext.commands import Bot as BotBase, Context
+from discord.ext.commands.errors import CommandNotFound, BadArgument, MissingRequiredArgument, CommandOnCooldown
 from discord.errors import HTTPException, Forbidden
 
 from ..db import db
@@ -104,6 +105,8 @@ class CiceroBot(BotBase):
             await context.send('Command not found - enter "!help" for more instructions')
         elif hasattr(exception, 'original'):
             raise exception.original
+        elif isinstance(exception, CommandOnCooldown):
+            await context.send(f'Command {str(exception.cooldown.type).split(".")[-1]}on cooldown wait for {exception.retry_after:,.0f} seconds to limit spamming.')
         elif isinstance(exception, HTTPException):
             await context.send('Unable to send message.')
         elif isinstance(exception, BadArgument):

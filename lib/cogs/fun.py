@@ -3,7 +3,7 @@ from random import choice
 
 from aiohttp import request
 from discord import Member, Embed
-from discord.ext.commands import Cog, command, BadArgument
+from discord.ext.commands import Cog, command, BadArgument, BucketType, cooldown
 
 """
 Cog documentation:
@@ -55,6 +55,8 @@ class Fun(Cog):
     async def multiply(self, conn: sqlite3.dbapi2, cal_str: str):
         await conn.send('deine mum')
 
+
+    @cooldown(rate=2, per=10, type=BucketType.guild)
     @command(name="fight", alias=['battle'])
     async def fight(self, ctx: sqlite3.dbapi2, fighter2: Member, *, reason: str = 'No blood'):
         """
@@ -70,11 +72,19 @@ class Fun(Cog):
     @fight.error
     async def fight_error(self, ctx, exc):
         if isinstance(exc, BadArgument):
-            await ctx.send('Too much blood.')
+            await ctx.send('Too fast blood.')
         else:
             await ctx.send('unknown error occurred')
 
+    """
+    @command
+    :name & alias calling name
+    @cooldown
+    :rate - number of commands to be used
+    :per - time for cooldown
+    """
     @command(name="animals", alias=['animal_list', 'animal'])
+    @cooldown(rate=1, per=10, type=BucketType.user)
     async def animal(self, ctx, animal: str):
         if (animal := animal.lower()) in ('dog', 'cat', 'fox', 'bird', 'koala', 'panda'):
             text_url = f'https://some-random-api.ml/facts/{animal}'
@@ -107,6 +117,10 @@ class Fun(Cog):
         else:
             await ctx.send("Unknown animal species.")
 
+    """    @animal.error()
+    async def fight_error(self, ctx, exc):
+        pass
+    """
     @Cog.listener()
     async def on_ready(self):
         if not self.bot.ready:
