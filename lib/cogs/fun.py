@@ -1,12 +1,9 @@
-from discord.ext.commands import Cog
-from discord.ext.commands import command
-from discord import Member
-
+import sqlite3
 from random import choice
 
-import sqlite3
-
-from setuptools.command.alias import alias
+from aiohttp import request
+from discord import Member, Embed
+from discord.ext.commands import Cog, command, BadArgument
 
 """
 Cog documentation:
@@ -56,28 +53,71 @@ class Fun(Cog):
 
     @command(name="multiply")
     async def multiply(self, conn: sqlite3.dbapi2, cal_str: str):
-        await conn.send()
+        await conn.send('deine mum')
 
     @command(name="fight", alias=['battle'])
-    async def fight(self, conn: sqlite3.dbapi2, fighter1: Member, fighter2: Member, *, reason: str = 'No blood'):
-        await conn.send(f'{conn.author.display_name} says that '
-                        f'{fighter1.mention} has to fight or die against {fighter2.mention}\n'
-                        f'Reason: {reason}')
+    async def fight(self, ctx: sqlite3.dbapi2, fighter2: Member, *, reason: str = 'No blood'):
+        """
+        This is methode creates a battle request between two fighters and has to be accepted
+        :param ctx: you - fight requester
+        :param fighter2: user to battle against
+        :param reason: reason you want to battle f.e. honor, elo
+        :return:
+        """
+        await ctx.send(f'{ctx.author.display_name} wants to fight or die against {fighter2.mention}\n'
+                       f'Reason: {reason}')
 
+    @fight.error
+    async def fight_error(self, ctx, exc):
+        if isinstance(exc, BadArgument):
+            await ctx.send('Too much blood.')
+        else:
+            await ctx.send('unknown error occurred')
+
+    @command(name="animals", alias=['animal_list', 'animal'])
+    async def animal(self, ctx, animal: str):
+        if (animal := animal.lower()) in ('dog', 'cat', 'fox', 'bird', 'koala', 'panda'):
+            text_url = f'https://some-random-api.ml/facts/{animal}'
+            image_url = f'https://some-random-api.ml/img/{animal}'
+            print(image_url)
+            async with request("GET", image_url, headers={}) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    image_link = data["link"]
+                    print(f'{image_link=}')
+
+                else:
+                    image_link = None
+                    print(f'{image_link=}')
+
+            async with request("GET", text_url, headers={}) as response:
+                if response.status == 200:
+                    data = await response.json()
+
+                    embed = Embed(title=f"{animal} fact",
+                                  description=data["fact"],
+                                  colour=ctx.author.colour)
+                    if image_link is not None:
+                        embed.set_image(url=image_link)
+                    await ctx.send(embed=embed)
+
+                else:
+                    await ctx.send(f"API returned a {response.status} status.")
+
+        else:
+            await ctx.send("Unknown animal species.")
 
     @Cog.listener()
     async def on_ready(self):
         if not self.bot.ready:
             self.bot.cogs_ready.ready_up('fun')
-        await self.bot.channel.send('Cog listener added')
+        # await self.bot.channel.send('Cog listener added')
 
     @Cog.listener()
     async def on_message(self, message):
         print('cog load on_message ', message)
 
 
-
 def setup(bot):
     bot.add_cog(Fun(bot))
     # bot.scheduler.add_job(...)
-

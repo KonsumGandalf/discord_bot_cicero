@@ -5,8 +5,8 @@ from asyncio import sleep
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from discord import Embed, File, Intents
-from discord.ext.commands import Bot as BotBase, Context
-from discord.ext.commands import CommandNotFound
+from discord.ext.commands import Bot as BotBase, Context, CommandNotFound, BadArgument, MissingRequiredArgument
+from discord.errors import HTTPException, Forbidden
 
 from ..db import db
 
@@ -20,6 +20,7 @@ __location__ = os.path.realpath(
 COGS = [path.split('\\')[-1][:-3] for path in glob('lib/cogs/*.py')]
 # split: 'lib/cogs\\fun.py' => 'fun.py'
 # [-1][:-3]: 'fun.py' => fun
+IGNORE_EXCEPTION = [BadArgument]
 
 class Ready(object):
     """
@@ -78,11 +79,11 @@ class CiceroBot(BotBase):
         ctx = await self.get_context(message, cls=Context)
 
         if ctx.command is not None and ctx.guild is not None:
-            if self.ready:
-                await self.invoke(ctx)
+            if not self.ready:
+                await ctx.send("I'm not ready to receive commands. Please wait a few seconds.")
 
             else:
-                await ctx.send('Wait cooldown 10 seconds')
+                await self.invoke(ctx)
 
 
     async def on_connect(self):
@@ -99,11 +100,18 @@ class CiceroBot(BotBase):
         raise
 
     async def on_command_error(self, context, exception):
-        if isinstance(context, CommandNotFound):
-            pass
+        if isinstance(exception, CommandNotFound):
+            await context.send('Command not found - enter "!help" for more instructions')
         elif hasattr(exception, 'original'):
             raise exception.original
-
+        elif isinstance(exception, HTTPException):
+            await context.send('Unable to send message.')
+        elif isinstance(exception, BadArgument):
+            await context.send('Wrong Argument is passes.')
+        elif isinstance(exception, Forbidden):
+            await context.send('I have no permission to execute this command.')
+        elif isinstance(exception, MissingRequiredArgument):
+            await context.send('At least one required argument is missing.')
         else:
             raise exception
 
@@ -130,7 +138,7 @@ class CiceroBot(BotBase):
                 print('wait')
                 await sleep(0.5)
 
-            await self.channel.send('Now online!')
+            # await self.channel.send('Now online!')
             self.ready = True
         else:
             print('bot reconnect')
