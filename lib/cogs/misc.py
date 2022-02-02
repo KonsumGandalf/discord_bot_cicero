@@ -10,13 +10,13 @@ class Misc(Cog):
 
     @command(name="prefix")
     @has_permissions(manage_guild=True)
-    async def change_prefix(self, ctx, new: str):
-        if len(new) > 5:
+    async def change_prefix(self, ctx, new_prefix: str):
+        if len(new_prefix) > 5:
             await ctx.send("The prefix can not be more than 5 characters in length.")
 
         else:
-            db.execute("UPDATE Guilds SET Prefix = ? WHERE GuildID = ?", new, ctx.guild.id)
-            await ctx.send(f"Prefix set to {new}.")
+            db.execute("UPDATE Guilds SET Prefix = ? WHERE GuildID = ?", new_prefix, ctx.guild.id)
+            await ctx.send(f"Prefix set to {new_prefix=} .")
 
     @change_prefix.error
     async def change_prefix_error(self, ctx, exc):
@@ -29,9 +29,6 @@ class Misc(Cog):
             self.bot.cogs_ready.ready_up("misc")
 
 
-async def on_ready(self):
-    if not self.bot.ready:
-        self.bot.cogs_ready.ready_up("misc")
 
 
 def setup(bot):
