@@ -62,8 +62,8 @@ class Log(Cog):
                               colour=after.colour,
                               timestamp=datetime.utcnow())
 
-                fields = [('Before', before.content, False),
-                          ('After', after.content, False)]
+                fields = [('Before', before.display_name, False),
+                          ('After', after.display_name, False)]
 
                 for name, value, inline in fields:
                     embed.add_field(name=name, value=value, inline=inline)
