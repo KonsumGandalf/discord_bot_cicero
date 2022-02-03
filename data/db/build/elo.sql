@@ -4,3 +4,4 @@ CREATE TABLE IF NOT EXISTS Elo (
     Level integer DEFAULT 0,
     EloTime text DEFAULT CURRENT_TIMESTAMP
 );
+
