@@ -192,7 +192,7 @@ class Mod(Cog):
 
                 await target.edit(roles=roles)
 
-                embed = Embed(title="Member muted",
+                embed = Embed(title="Member unmuted",
                               colour=0xDD2222,
                               timestamp=datetime.utcnow())
 
@@ -221,7 +221,8 @@ class Mod(Cog):
     @Cog.listener()
     async def on_ready(self):
         if not self.bot.ready:
-            self.log_channel = self.bot.get_channel(938469827272663090)
+            self.log_channel = self.bot.get_channel(
+                db.field('SELECT ModChannelID FROM Guilds WHERE GuildID= (?)', self.bot.guild.id))
             self.muted_role = self.bot.guild.get_role(938902664102678529)
             self.bot.cogs_ready.ready_up('mod')
 

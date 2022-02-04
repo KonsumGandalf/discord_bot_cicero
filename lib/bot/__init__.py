@@ -1,13 +1,13 @@
 import os
-from glob import glob
 from asyncio import sleep
+from datetime import datetime
+from glob import glob
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-
-from discord import Embed, File, Intents
-from discord.ext.commands import Bot as BotBase, Context, when_mentioned_or, command, has_permissions
-from discord.ext.commands.errors import CommandNotFound, BadArgument, MissingRequiredArgument, CommandOnCooldown
+from discord import Embed, Intents, DMChannel
 from discord.errors import HTTPException, Forbidden
+from discord.ext.commands import Bot as BotBase, Context, when_mentioned_or
+from discord.ext.commands.errors import CommandNotFound, BadArgument, MissingRequiredArgument, CommandOnCooldown
 
 from ..db import db
 
@@ -21,7 +21,7 @@ __location__ = os.path.realpath(
 COGS = [path.split('\\')[-1][:-3] for path in glob('lib/cogs/*.py')]
 # split: 'lib/cogs\\fun.py' => 'fun.py'
 # [-1][:-3]: 'fun.py' => fun
-IGNORE_EXCEPTION = [BadArgument]
+IGNORE_EXCEPTION = [BadArgument, CommandNotFound]
 
 
 def get_prefix(bot, message):
@@ -68,7 +68,6 @@ class CiceroBot(BotBase):
         )
         print(123)
         print(get_prefix)
-
 
     def setup(self):
         for cog in COGS:
@@ -155,10 +154,28 @@ class CiceroBot(BotBase):
             print('bot reconnect')
 
     async def on_message(self, message):
-        if message.author.bot:
-            pass
-        elif not message.author.bot:
-            await self.process_commands(message)
+        if not message.author.bot:
+            if isinstance(message.channel, DMChannel):
+                if len(message.content) < 10:
+                    await message.channel.send("Please provide information longer than 10 chars.")
+                else:
+                    embed = Embed(title="Modmail ",
+                                  colour=0x82ec0c,
+                                  timestamp=datetime.utcnow())
+
+                    embed.set_thumbnail(url=message.author.avatar_url)
+
+                    fields = [("Member", message.author.display_name, False),
+                              ("Message", message.content, False)]
+
+                    for name, value, inline in fields:
+                        embed.add_field(name=name, value=value, inline=inline)
+                    # https://youtu.be/72dXuNmqbzM?t=391
+                    mod = self.get_cog('Mod')  # Mod not mod due to the class name not the file name
+                    await mod.log_channel.send(embed=embed)  # ctx
+                    await message.channel.send('Message forwarded to mod channel')
+            else:
+                await self.process_commands(message)
 
     async def battle_reminder(self):
         await self.channel.send('Remember to add your battle statistics')
