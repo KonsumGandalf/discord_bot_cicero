@@ -30,7 +30,6 @@ class Log(Cog):
         self.channel = ctx
         await self.channel.send('logger was deployed')
 
-
     @Cog.listener()
     async def on_user_update(self, before, after):
         if before.display_name != after.display_name:
@@ -58,7 +57,6 @@ class Log(Cog):
 
             await self.channel.send(embed=embed)
 
-
     @Cog.listener()
     async def on_member_update(self, before, after):
         if before.display_name != after.display_name:
@@ -75,13 +73,12 @@ class Log(Cog):
 
             await self.channel.send(embed=embed)
 
-        if before.roles != after.roles:
+        if before.roles != after.roles and len(before.roles) > 1:
             embed = Embed(title='Member update',
                           description='Role update',
                           colour=after.colour,
                           timestamp=datetime.utcnow())
 
-            print(before.roles)
             fields = [('Before', " ,".join([r.mention for r in before.roles if 'everyone' not in str(r)]), False),
                       ('After', " ,".join([r.mention for r in after.roles if 'everyone' not in str(r)]), False)]
 
@@ -89,7 +86,6 @@ class Log(Cog):
                 embed.add_field(name=name, value=value, inline=inline)
 
             await self.channel.send(embed=embed)
-
 
     @Cog.listener()
     async def on_message_edit(self, before, after):
@@ -108,10 +104,11 @@ class Log(Cog):
 
                 await self.channel.send(embed=embed)
 
-
     @Cog.listener()
     async def on_message_delete(self, message):
+        print('seen: ', message)
         if not message.author.bot:
+            print('reacted to: ', message)
             embed = Embed(title='Message deleted:',
                           description=f'by {message.author}',
                           colour=message.author.colour,

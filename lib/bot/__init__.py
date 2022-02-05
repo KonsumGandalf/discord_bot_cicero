@@ -66,8 +66,6 @@ class CiceroBot(BotBase):
             owner_ids=OWNER_IDS,
             intents=Intents.all(),
         )
-        print(123)
-        print(get_prefix)
 
     def setup(self):
         for cog in COGS:
