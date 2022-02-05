@@ -22,7 +22,6 @@ class Welcome(Cog):
 
     @Cog.listener()
     async def on_member_join(self, member):
-        print(member)
         db.execute("INSERT INTO Elo (UserID) VALUES (?)", member.id)
         await self.bot.get_channel(938197415851331695).send(f'{choice(["Welcome","Hello there", "Ave", "Greetings"])} '
                                 f'**{member.guild.name}** {member.mention} !')

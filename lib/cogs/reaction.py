@@ -94,7 +94,7 @@ class Reaction(Cog):
                            most_voted.count == ele.count]
         await self.channel.send(f"The most voted option{' is' if len(most_voted_list) <= 1 else 's are'} "
                                 f"{' ,'.join(most_voted_list)} with {most_voted_count} votes")
-        self.polls.remove((self.channel, message_id))
+        # self.polls.remove((self.channel, message_id))
 
     @Cog.listener()
     async def on_raw_reaction_add(self, payload):
