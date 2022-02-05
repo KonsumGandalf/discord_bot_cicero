@@ -155,7 +155,7 @@ class Mod(Cog):
 
                     fields = [("Member", target.display_name, False),
                               ("Actioned by", message.author.display_name, False),
-                              ("Duration", f"{time_in_sec:,} hour(s)" if time_in_sec else "Indefinite", False),
+                              ("Duration", f"{time_in_sec:,} second(s)" if time_in_sec else "Indefinite", False),
                               ("Reason", reason, False)]
 
                     for name, value, inline in fields:
@@ -166,6 +166,9 @@ class Mod(Cog):
                     if time_in_sec:
                         unmutes.append(target)
 
+        if len(unmutes):
+            await sleep(time_in_sec)
+            await self.unmute_members(self.bot.guild, targets)
         return unmutes
 
     @command(name="mute")
@@ -177,12 +180,9 @@ class Mod(Cog):
             await ctx.send("One or more required arguments are missing.")
 
         else:
-            unmutes = await self.mute_members(ctx.message, targets, time_in_seconds, reason)
+            await self.mute_members(ctx.message, targets, time_in_seconds, reason)
             await ctx.send("Action ended.")
 
-            if len(unmutes):
-                await sleep(time_in_seconds)
-                await self.unmute_members(ctx.guild, targets)
 
     @mute_action.error
     async def mute_error(self, ctx, error):
@@ -248,7 +248,19 @@ class Mod(Cog):
 
     @Cog.listener()
     async def on_message(self, message):
+        def _check(msg):
+            return (msg.author == message.author
+                    #and len(msg.mentions)
+                    and (datetime.utcnow() - msg.created_at).seconds < 60)
+
         if not message.author.bot:
+            # self.bot.cached_messages - last 1000 msg
+            if len(list(filter(lambda msg: _check(msg), self.bot.cached_messages))) >= 3:
+                time_in_sec = 30
+                await message.channel.send("Don't spam mentions.", delete_after=15)
+                await self.mute_members(message, [message.author], time_in_sec=time_in_sec, reason='Spamming mentions or attachments')
+
+
             if message.channel.id in self.url_not_allowed and search(self.url_regex, message.content):
                 await message.delete()
                 await message.channel.send("You can't send links in this channel", delete_after=10)
