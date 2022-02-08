@@ -3,15 +3,15 @@ from datetime import datetime, timedelta
 from discord import Embed
 from discord.ext.commands import Cog, has_permissions, command
 
-from ..db import db
+from lib.db import db
 
 
 class Reaction(Cog):
-    channel = None
     reaction_msg = None
     nationalities_dict: dict
     numbers_set: tuple
     polls = []
+    roles = []
 
     def __init__(self, bot):
         self.bot = bot
@@ -29,10 +29,10 @@ class Reaction(Cog):
             self.numbers_set = ("1️⃣", "2⃣", "3⃣", "4⃣", "5⃣",
                                 "6⃣", "7⃣", "8⃣", "9⃣", "🔟")
 
-            self.channel = self.bot.get_channel(
-                db.field('SELECT ReactChannelID FROM Guilds WHERE GuildID= (?)', self.bot.guild.id))
-            self.reaction_msg = await self.channel.fetch_message(939474652944801833)
-            print(self.reaction_msg)
+            self.channel_id_col = "ReactChannelID"
+
+            # self.reaction_msg = await self.channel.fetch_message(939474652944801833)
+            # print(self.reaction_msg)
             self.bot.cogs_ready.ready_up('reaction')
 
     """
@@ -73,7 +73,7 @@ class Reaction(Cog):
             for name, value, inline in fields:
                 embed.add_field(name=name, value=value, inline=inline)
 
-            message = await self.channel.send(embed=embed)
+            message = await self.bot.cicero_get_channel(ctx, self.channel_id_col).send(embed=embed)
 
             for emoji in self.numbers_set[:len(options)]:
                 await message.add_reaction(emoji=emoji)
@@ -83,16 +83,17 @@ class Reaction(Cog):
             print(duration * 3600)
             self.bot.scheduler.add_job(self.complete_poll, "date",
                                        run_date=datetime.now() + timedelta(seconds=duration),
-                                       args=[message.id])
+                                       args=[message])
 
-    async def complete_poll(self, message_id):
-        message = await self.channel.fetch_message(message_id)
+    async def complete_poll(self, msg):
+        channel = await self.bot.cicero_get_channel(msg, self.channel_id_col)
+        message = channel.fetch_message(msg.id)
         most_voted = max(message.reactions, key=lambda r: r.count)
         most_voted_count = max([ele.count for ele in message.reactions]) - 1
         print(str(message.reactions))
         most_voted_list = [self.numbers_set[idx] for idx, ele in enumerate(message.reactions) if
                            most_voted.count == ele.count]
-        await self.channel.send(f"The most voted option{' is' if len(most_voted_list) <= 1 else 's are'} "
+        await channel.send(f"The most voted option{' is' if len(most_voted_list) <= 1 else 's are'} "
                                 f"{' ,'.join(most_voted_list)} with {most_voted_count} votes")
         # self.polls.remove((self.channel, message_id))
 
@@ -113,6 +114,7 @@ class Reaction(Cog):
             message = await self.channel.fetch_message(payload.message_id)
 
             for reaction in message.reactions:
+                if (not payload.member.bot
                 if (not payload.member.bot
                         and payload.member in await reaction.users().flatten()
                         and reaction.emoji != payload.emoji.name):

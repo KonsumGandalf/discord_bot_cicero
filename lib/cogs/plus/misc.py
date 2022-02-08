@@ -1,7 +1,7 @@
 from discord.ext.commands import Cog
 from discord.ext.commands import command, has_permissions, CheckFailure
 
-from ..db import db
+from lib.db import db
 
 
 class Misc(Cog):

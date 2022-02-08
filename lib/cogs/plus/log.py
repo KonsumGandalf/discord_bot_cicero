@@ -1,14 +1,19 @@
 from datetime import datetime
+from inspect import currentframe, getframeinfo
 
-from discord import Embed
+from discord import Embed, Message
 from discord.ext.commands import Cog, BucketType, command, cooldown, has_permissions
 
-from ..db import db
+from lib.cogs.channel import NoChannelError
+from lib.db import db
+
+frameinfo = getframeinfo(currentframe())
+
+
+# from os.path import basename basename(__file__)
 
 
 class Log(Cog):
-    channel = None
-
     def __init__(self, bot):
         self.bot = bot
         """
@@ -18,24 +23,23 @@ class Log(Cog):
     @Cog.listener()
     async def on_ready(self):
         if not self.bot.ready:
-            self.channel = self.bot.get_channel(
-                db.field("SELECT LogChannelID FROM Guilds WHERE GuildID = (?)", self.bot.guild.id))
             self.bot.cogs_ready.ready_up('log')
 
     @command(name='deploy_logger')
     @has_permissions(manage_guild=True)
     @cooldown(rate=3, per=60, type=BucketType.user)
     async def deploy(self, ctx):
-        db.execute("UPDATE Guilds SET LogChannelID = ? WHERE GuildID = ?", ctx.channel.id, self.bot.guild.id)
-        self.channel = ctx
-        await self.channel.send('logger was deployed')
+        db.execute("UPDATE Guilds SET LogChannelID = ? WHERE GuildID = ?", ctx.channel.id, ctx.guild.id)
+        channel = ctx
+        await channel.send('logger was deployed')
 
     @Cog.listener()
     async def on_user_update(self, before, after):
+        channel = self.bot.cicero_get_channel(before, "LogChannelID")
         if before.display_name != after.display_name:
             embed = Embed(title='Member update',
                           description='Nickname change',
-                          colour=self.channel.guild.get_member(after.id).colour,
+                          colour=channel.guild.get_member(after.id).colour,
                           timestamp=datetime.utcnow())
 
             fields = [('Before', before.display_name, False),
@@ -44,21 +48,22 @@ class Log(Cog):
             for name, value, inline in fields:
                 embed.add_field(name=name, value=value, inline=inline)
 
-            await self.channel.send(embed=embed)
+            await channel.send(embed=embed)
 
         if before.avatar_url != after.avatar_url:
             embed = Embed(title='Member update',
                           description='Avatar change:\n-right: old\n-left:new',
-                          colour=self.channel.guild.get_member(after.id).colour,
+                          colour=channel.guild.get_member(after.id).colour,
                           timestamp=datetime.utcnow())
 
             embed.set_thumbnail(url=before.avatar_url)
             embed.set_image(url=after.avatar_url)
 
-            await self.channel.send(embed=embed)
+            await channel.send(embed=embed)
 
     @Cog.listener()
     async def on_member_update(self, before, after):
+        channel = self.bot.cicero_get_channel(before, "LogChannelID")
         if before.display_name != after.display_name:
             embed = Embed(title='Member update',
                           description='Nickname change',
@@ -71,7 +76,7 @@ class Log(Cog):
             for name, value, inline in fields:
                 embed.add_field(name=name, value=value, inline=inline)
 
-            await self.channel.send(embed=embed)
+            await channel.send(embed=embed)
 
         if before.roles != after.roles and len(before.roles) > 1:
             embed = Embed(title='Member update',
@@ -85,10 +90,11 @@ class Log(Cog):
             for name, value, inline in fields:
                 embed.add_field(name=name, value=value, inline=inline)
 
-            await self.channel.send(embed=embed)
+            await channel.send(embed=embed)
 
     @Cog.listener()
     async def on_message_edit(self, before, after):
+        channel = self.bot.cicero_get_channel(before, "LogChannelID")
         if not after.author.bot:
             if before.content != after.content:
                 embed = Embed(title='Message edit',
@@ -102,11 +108,11 @@ class Log(Cog):
                 for name, value, inline in fields:
                     embed.add_field(name=name, value=value, inline=inline)
 
-                await self.channel.send(embed=embed)
+                await channel.send(embed=embed)
 
     @Cog.listener()
     async def on_message_delete(self, message):
-        print('seen: ', message)
+        channel = self.bot.cicero_get_channel(message, "LogChannelID")
         if not message.author.bot:
             print('reacted to: ', message)
             embed = Embed(title='Message deleted:',
@@ -116,7 +122,7 @@ class Log(Cog):
 
             embed.add_field(name='Content', value=message.content, inline=False)
 
-            await self.channel.send(embed=embed)
+            await channel.send(embed=embed)
 
 
 def setup(bot):

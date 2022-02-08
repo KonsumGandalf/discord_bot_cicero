@@ -7,23 +7,23 @@ from discord import Embed, Member, Forbidden
 from discord.ext.commands import Greedy, Cog, command, \
     CheckFailure, has_permissions, MissingPermissions, bot_has_permissions
 
-from ..db import db
+from lib.db import db
 
 
 class Mod(Cog):
-    log_channel = None
-    url_not_allowed = None
-    img_not_allowed = None
     url_regex = r"(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+" \
                 r"[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+" \
                 r"(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))"
 
     def __init__(self, bot):
         self.bot = bot
+        self.mod_channel_id_col = "ModChannelID"
+        self.no_img_channel_id_col, self.no_url_channel_id_col = "NoIMGChannelIDs", "NoURLChannelIDs"
 
-    async def kick_members(self, message, targets, reason):
+    async def kick_members(self, msg, targets, reason):
+        channel = self.bot.cicero_get_channel(msg, self.mod_channel_id_col)
         for user in targets:
-            if message.guild.me.top_role.position > user.top_role.position \
+            if msg.guild.me.top_role.position > user.top_role.position \
                     and not user.guild_permissions.administrator:
 
                 embed = Embed(title="User kicked",
@@ -32,7 +32,7 @@ class Mod(Cog):
 
                 embed.set_thumbnail(url=user.avatar_url)
                 fields = [("Member", f"{user.name} aka. {user.display_name}", False),
-                          ("Action by", message.author.display_name, False),
+                          ("Action by", msg.author.display_name, False),
                           ("Reason", reason, False)]
 
                 for name, value, inline in fields:
@@ -43,11 +43,11 @@ class Mod(Cog):
                 except Forbidden:
                     print('Embed not sendable.')
 
-                await self.log_channel.send(embed=embed)
+                await channel.send(embed=embed)
                 await user.kick(reason=reason)
             else:
-                await self.log_channel.send(f'{user.mention} could not be kicked due to higher or administrative roles')
-                await user.send(f'{message.author.mention} tried to kick you.')
+                await channel.send(f'{user.mention} could not be kicked due to higher or administrative roles')
+                await user.send(f'{msg.author.mention} tried to kick you.')
 
     @command(name="kick")
     @bot_has_permissions(kick_members=True)
@@ -67,6 +67,7 @@ class Mod(Cog):
             await ctx.send("This shouldn't happen.")
 
     async def ban_members(self, message, targets, reason):
+        channel = self.bot.cicero_get_channel(message, self.mod_channel_id_col)
         for user in targets:
             if message.guild.me.top_role.position > user.top_role.position \
                     and not user.guild_permissions.administrator:
@@ -89,11 +90,11 @@ class Mod(Cog):
                 except Forbidden:
                     print('Embed not sendable.')
 
-                await self.log_channel.send(embed=embed)
+                await channel.send(embed=embed)
                 await user.ban(reason=reason)
 
             else:
-                await self.log_channel.send(f'{user.mention} could not be kicked due to higher or administrative roles')
+                await channel.send(f'{user.mention} could not be kicked due to higher or administrative roles')
                 await user.send(f'{message.author.mention} tried to kick you.')
 
     @command(name="ban")
@@ -134,12 +135,12 @@ class Mod(Cog):
         else:
             await ctx.send("The limit provided is not within acceptable bounds.")
 
-    async def mute_members(self, message, targets, time_in_sec, reason):
+    async def mute_members(self, msg, targets, time_in_sec, reason):
         unmutes = []
 
         for target in targets:
             if not self.muted_role in target.roles:
-                if message.guild.me.top_role.position > target.top_role.position:
+                if msg.guild.me.top_role.position > target.top_role.position:
                     role_ids = ",".join([str(r.id) for r in target.roles])
                     end_time = datetime.utcnow() + timedelta(seconds=time_in_sec) if time_in_sec else None
                     db.execute("INSERT INTO Mutes VALUES (?, ?, ?)",
@@ -154,14 +155,14 @@ class Mod(Cog):
                     embed.set_thumbnail(url=target.avatar_url)
 
                     fields = [("Member", target.display_name, False),
-                              ("Actioned by", message.author.display_name, False),
+                              ("Actioned by", msg.author.display_name, False),
                               ("Duration", f"{time_in_sec:,} second(s)" if time_in_sec else "Indefinite", False),
                               ("Reason", reason, False)]
 
                     for name, value, inline in fields:
                         embed.add_field(name=name, value=value, inline=inline)
 
-                    await self.log_channel.send(embed=embed)
+                    await self.bot.cicero_get_channel(msg, self.mod_channel_id_col).send(embed=embed)
 
                     if time_in_sec:
                         unmutes.append(target)
@@ -213,7 +214,7 @@ class Mod(Cog):
                 for name, value, inline in fields:
                     embed.add_field(name=name, value=value, inline=inline)
 
-                await self.log_channel.send(embed=embed)
+                await self.bot.cicero_get_channel(guild, self.mod_channel_id_col).send(embed=embed)
 
     @command(name="unmute")
     @bot_has_permissions(manage_roles=True)
@@ -235,14 +236,6 @@ class Mod(Cog):
     @Cog.listener()
     async def on_ready(self):
         if not self.bot.ready:
-            self.url_not_allowed = [int(ele) for ele in
-                                    db.field("SELECT NoURLChannelIDs FROM Guilds WHERE GuildID = (?)",
-                                             self.bot.guild.id).split(',')]
-            self.img_not_allowed = [int(ele) for ele in
-                                    db.field("SELECT NoIMGChannelIDs FROM Guilds WHERE GuildID = (?)",
-                                             self.bot.guild.id).split(',')]
-            self.log_channel = self.bot.get_channel(
-                db.field('SELECT ModChannelID FROM Guilds WHERE GuildID= (?)', self.bot.guild.id))
             self.muted_role = self.bot.guild.get_role(938902664102678529)
             self.bot.cogs_ready.ready_up('mod')
 
@@ -254,6 +247,17 @@ class Mod(Cog):
                     and (datetime.utcnow() - msg.created_at).seconds < 60)
 
         if not message.author.bot:
+            img_not_allowed, url_not_allowed = [], []
+            if db.field(f"SELECT {self.no_img_channel_id_col} FROM Guilds WHERE GuildID = (?)",
+                                        self.bot.guild.id):
+                img_not_allowed = [int(ele) for ele in
+                                   db.field(f"SELECT {self.no_img_channel_id_col} FROM Guilds WHERE GuildID = (?)",
+                                            self.bot.guild.id).split(',')]
+            if db.field(f"SELECT {self.no_url_channel_id_col} FROM Guilds WHERE GuildID = (?)",
+                                        self.bot.guild.id):
+                url_not_allowed = [int(ele) for ele in
+                                   db.field(f"SELECT {self.no_url_channel_id_col} FROM Guilds WHERE GuildID = (?)",
+                                            self.bot.guild.id).split(',')]
             # self.bot.cached_messages - last 1000 msg
             if len(list(filter(lambda msg: _check(msg), self.bot.cached_messages))) >= 3:
                 time_in_sec = 30
@@ -261,11 +265,12 @@ class Mod(Cog):
                 await self.mute_members(message, [message.author], time_in_sec=time_in_sec, reason='Spamming mentions or attachments')
 
 
-            if message.channel.id in self.url_not_allowed and search(self.url_regex, message.content):
+            if message.channel.id in url_not_allowed and search(self.url_regex, message.content):
                 await message.delete()
                 await message.channel.send("You can't send links in this channel", delete_after=10)
 
-            elif (message.channel.id in self.img_not_allowed
+
+            elif (message.channel.id in img_not_allowed
                   and any([hasattr(a, "width") for a in message.attachments])):
                 await message.delete()
                 await message.channel.send("You can't send images in this channel", delete_after=10)

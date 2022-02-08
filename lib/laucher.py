@@ -1,7 +1,7 @@
 from lib.bot import bot
 import os
 
-VERSION = "0.0.26"
+VERSION = "0.0.28"
 
 
 def main():

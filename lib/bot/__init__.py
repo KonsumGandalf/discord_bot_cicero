@@ -3,6 +3,7 @@ from asyncio import sleep
 from datetime import datetime
 from glob import glob
 
+import discord
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from discord import Embed, Intents, DMChannel
 from discord.errors import HTTPException, Forbidden
@@ -10,6 +11,7 @@ from discord.ext.commands import Bot as BotBase, Context, when_mentioned_or
 from discord.ext.commands.errors import CommandNotFound, BadArgument, MissingRequiredArgument, CommandOnCooldown
 
 from ..db import db
+from lib.cogs.channel import NoChannelError
 
 PREFIX = '!'
 OWNER_IDS = [263363960764497931]
@@ -18,7 +20,8 @@ CHANNEL_IDS = 935848953885368340
 __location__ = os.path.realpath(
     os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
-COGS = [path.split('\\')[-1][:-3] for path in glob('lib/cogs/*.py')]
+STANDARD_COGS = [path.split('\\')[-1][:-3] for path in glob('lib/cogs/*.py')]
+PLUS_COGS = [path.split('\\')[-1][:-3] for path in glob('lib/cogs/plus/*.py')]
 # split: 'lib/cogs\\fun.py' => 'fun.py'
 # [-1][:-3]: 'fun.py' => fun
 IGNORE_EXCEPTION = [BadArgument, CommandNotFound]
@@ -36,7 +39,7 @@ class Ready(object):
     """
 
     def __init__(self):
-        for cog in COGS:
+        for cog in (STANDARD_COGS+PLUS_COGS):
             setattr(self, cog, False)
             # sets all cogs to not ready
 
@@ -45,7 +48,7 @@ class Ready(object):
         print(f'cog: {cog} ready')
 
     def all_ready(self):
-        return all([getattr(self, cog) for cog in COGS])
+        return all([getattr(self, cog) for cog in (STANDARD_COGS+PLUS_COGS)])
 
 
 class CiceroBot(BotBase):
@@ -68,9 +71,12 @@ class CiceroBot(BotBase):
         )
 
     def setup(self):
-        for cog in COGS:
+        for cog in STANDARD_COGS:
             self.load_extension(f'lib.cogs.{cog}')
             print(f'{cog} cog loaded')
+        for cog in PLUS_COGS:
+            self.load_extension(f'lib.cogs.plus.{cog}')
+            print(f'{cog} plus_cog loaded')
 
     def run(self, version='0.0.0'):
         self.VERSION = version
@@ -81,6 +87,24 @@ class CiceroBot(BotBase):
             self.TOKEN = tokenFile.read()
 
         super().run(self.TOKEN, reconnect=True)
+
+    # ',' after guild.id is important for executemany to realize a new tuple is starting
+    def update_db(self):
+        db.multiexec("INSERT OR IGNORE INTO Guilds (GuildID) VALUES (?)",
+                     ((guild.id,) for guild in self.guilds))
+
+        db.multiexec("INSERT OR IGNORE INTO Elo (UserID) VALUES (?)",
+                     ((member.id,) for member in self.guild.members if not member.bot))
+
+        to_remove = []
+        stored_members = db.column("SELECT UserID From exp")
+        for id_ in stored_members:
+            if not self.guild.members(id_):
+                to_remove.append(id_)
+
+        db.multiexec("DELETE FROM Elo WHERE UserID = ?",
+                     (id_ for id_ in to_remove))
+        db.commit()
 
     async def process_commands(self, message):
         ctx = await self.get_context(message, cls=Context)
@@ -130,8 +154,8 @@ class CiceroBot(BotBase):
             self.channel = self.get_channel(CHANNEL_IDS)
             self.scheduler.add_job(self.send_message, 'cron', day_of_week="mon-fri", hour='10', second='0,10,20,30')
             self.scheduler.start()
-            print('__init__ on ready')
 
+            self.update_db()
             """embed = Embed(title='Now online', description='Cicero is willed to help you.')
             fields = [('Name', 'Value', True),
                       ('Another field', 'This is the value', False)]
@@ -150,6 +174,9 @@ class CiceroBot(BotBase):
             self.ready = True
         else:
             print('bot reconnect')
+
+
+
 
     async def on_message(self, message):
         if not message.author.bot:
@@ -180,6 +207,16 @@ class CiceroBot(BotBase):
 
     async def send_message(self):
         await self.channel.send('timed_send: okay lets go baby baby')
+
+    def cicero_get_channel(self, ctx, NameID):
+        if isinstance(ctx, discord.Guild):
+            guild = ctx
+        else:
+            guild = ctx.guild
+        channel_id = db.field(f"SELECT {NameID} FROM Guilds WHERE GuildID = (?)", guild.id)
+        if channel_id is None:
+            raise NoChannelError(ctx, 'log')
+        return guild.get_channel(channel_id)
 
 
 bot = CiceroBot()

@@ -4,14 +4,14 @@ from random import randint
 from discord.ext.commands import Cog
 from discord import Embed
 
-from ..db import db
+from lib.db import db
 
 
-class Exp(Cog):
-    channel: None
+class Elo(Cog):
 
     def __init__(self, bot):
         self.bot = bot
+        self.channel_id_col = "EloChannelID"
 
     async def process_xp(self, msg):
         elo, lvl, eloTime = db.record("SELECT Elo, Level, EloTime FROM Elo WHERE UserID = ?", msg.author.id)
@@ -41,14 +41,12 @@ class Exp(Cog):
 
             for name, value, inline in fields:
                 embed.add_field(name=name, value=value, inline=inline)
-            await self.channel.send(embed=embed)
+            await self.bot.cicero_get_channel(msg, self.channel_id_col).send(embed=embed)
 
     @Cog.listener()
     async def on_ready(self):
         if not self.bot.ready:
-            self.channel = self.bot.get_channel(
-                db.field("SELECT LogChannelID FROM Guilds WHERE GuildID = (?)", self.bot.guild.id))
-            self.bot.cogs_ready.ready_up('exp')
+            self.bot.cogs_ready.ready_up('elo')
         # await self.bot.channel.send('Cog listener added')
 
     @Cog.listener()
@@ -58,4 +56,4 @@ class Exp(Cog):
 
 
 def setup(bot):
-    bot.add_cog(Exp(bot))
+    bot.add_cog(Elo(bot))

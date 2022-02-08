@@ -70,7 +70,7 @@ def records(command, *values):
     cur.execute(command, tuple(values))
     return cur.fetchone()
 
-def columns(command, *values):
+def column(command, *values):
     cur.execute(command, tuple(values))
     return [item[0] for item in cur.fetchone()]
 

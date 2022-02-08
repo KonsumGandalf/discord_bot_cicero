@@ -6,10 +6,10 @@ from discord.ext.commands import Cog, BucketType, command, cooldown
 
 
 class Info(Cog):
-    channel = None
 
     def __init__(self, bot):
         self.bot = bot
+        self.channel_id_col = "LogChannelID"
 
     @command(name='userinfo', aliases=['memberinfo', 'ui', 'mi'])
     async def user_info(self, ctx, target: Optional[Member]):
@@ -31,7 +31,7 @@ class Info(Cog):
         for name, value, inline in fields:
             embed.add_field(name=name, value=value, inline=inline)
 
-        await self.channel.send(embed=embed)
+        await self.bot.cicero_get_channel(ctx, self.channel_id_col).send(embed=embed)
 
     @command(name='serverinfo', aliases=['guildinfo', 'si', 'gi'])
     async def server_info(self, ctx):
@@ -60,12 +60,11 @@ class Info(Cog):
         for name, value, inline in fields:
             embed.add_field(name=name, value=value, inline=inline)
 
-        await self.channel.send(embed=embed)
+        await self.bot.cicero_get_channel(ctx, self.channel_id_col).send(embed=embed)
 
     @Cog.listener()
     async def on_ready(self):
         if not self.bot.ready:
-            self.channel = self.bot.get_channel(938469827272663090)
             self.bot.cogs_ready.ready_up('info')
 
 def setup(bot):
