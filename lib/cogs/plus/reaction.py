@@ -97,7 +97,7 @@ class Reaction(Cog):
                                 f"{' ,'.join(most_voted_list)} with {most_voted_count} votes")
         # self.polls.remove((self.channel, message_id))
 
-    @Cog.listener()
+    """@Cog.listener()
     async def on_raw_reaction_add(self, payload):
         if self.bot.ready and payload.message_id == self.reaction_msg.id:
             member = self.bot.guild.get_member(payload.user_id)
@@ -110,7 +110,7 @@ class Reaction(Cog):
             if not payload.member.id == self.reaction_msg.author.id:
                 await self.reaction_msg.remove_reaction(payload.emoji, member)
 
-            """        elif payload.message_id in (poll[1] for poll in self.polls):
+            """"""        elif payload.message_id in (poll[1] for poll in self.polls):
             message = await self.channel.fetch_message(payload.message_id)
 
             for reaction in message.reactions:
@@ -118,14 +118,14 @@ class Reaction(Cog):
                 if (not payload.member.bot
                         and payload.member in await reaction.users().flatten()
                         and reaction.emoji != payload.emoji.name):
-                    await message.remove_reaction(reaction.emoji, payload.member)"""
+                    await message.remove_reaction(reaction.emoji, payload.member)""""""
 
     @Cog.listener()
     async def on_raw_reaction_remove(self, payload):
         print(payload.member)
         if payload.member and self.bot.ready and payload.message_id == self.reaction_msg.id:
             member = self.bot.guild.get_member(payload.user_id)
-            await member.remove_roles(self.nationalities_dict[payload.emoji.name], reason="Self dismissed")
+            await member.remove_roles(self.nationalities_dict[payload.emoji.name], reason="Self dismissed")"""
 
 
 def setup(bot):

@@ -24,14 +24,11 @@ DB_PATH = 'data/db/database.db'
 SCRIPT_PATH = 'data/db'
 filename_prefix = 'elo.sql'
 SQLS = [path for path in glob('data/db/build/*.sql')]
-print(SQLS)
-
 conn = connect(DB_PATH, check_same_thread=False)
 cur = conn.cursor()
 for path_ele in SQLS:
     with open(path_ele, 'r', encoding='utf-8') as script:
         cur.executescript(script.read())
-        print(script.read())
 
 def with_commit(func):
     def inner(*args, **kwargs):
@@ -68,11 +65,11 @@ def record(command, *values):
 
 def records(command, *values):
     cur.execute(command, tuple(values))
-    return cur.fetchone()
+    return cur.fetchall()
 
 def column(command, *values):
     cur.execute(command, tuple(values))
-    return [item[0] for item in cur.fetchone()]
+    return [item[0] for item in cur.fetchall()]
 
 def execute(command, *values):
     cur.execute(command, tuple(values))
@@ -82,8 +79,5 @@ def multiexec(command, valueset):
 
 
 def scriptexec(path):
-    # print(path)
-    # print(f'{isfile(BUILD_PATH)=}')
     with open(path, 'r', encoding='utf-8') as script:
         cur.executescript(script.read())
-        # cur.execute(script.read()) methode for postgres

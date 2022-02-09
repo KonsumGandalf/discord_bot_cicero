@@ -3,3 +3,4 @@ CREATE TABLE IF NOT EXISTS Mutes (
     RoleIDs text,
     EndTime text
 )
+

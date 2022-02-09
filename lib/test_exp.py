@@ -28,7 +28,37 @@ class test:
 # test1 = test(name='felix')
 # test1.print_name()
 # print(test1.get_name('armin', 810428719796977704))
-print("#2830498203948"[1:])
+"""sub_str = ['tee'*idx for idx in range(1, 6)]
+v1 = len(max(sub_str))
+print(v1)
+for ele in sub_str:
+    print(f'{ele:<{v1}} moin')
 
+table = ("\n".join(
+            f"{idx}. {'awd':<{10}}"
+            f"(Elo: {idx} | Level: {idx})"
+            for idx, entry in enumerate(sub_str))
+        )
+print(table)
+
+list1 = [[0, 1, 2, 3, 4, 5],
+ [6, 7, 8, 9, 10, 11],
+ [12, 13, 14, 15, 16, 17],
+ [18, 19, 20, 21, 22, 23]]
+tlist = list(zip(*list1))
+for ele in tlist:
+    print(ele)
+"""
+print(bool({}))
+print('TeT'[1])
+
+import json
+with open('data/roles/predefined.json') as js:
+    data = json.load(js)
+
+for ele in data['roles']:
+    print(ele['Ratio'])
+
+print(int('0x9c5221', base=16))
 if __name__ == '__main__':
     pass

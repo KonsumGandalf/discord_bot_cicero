@@ -38,7 +38,7 @@ cog_list = [CogDescription("LogChannelID", "Supports moderation in cases of f.e.
                            'elo'),
             CogDescription('RolesChannelID', ' ',
                            ' ',
-                           'react'),
+                           'roles'),
             ]
 
 
@@ -98,7 +98,6 @@ class Reaction(Cog):
             )
         db.execute(f"UPDATE Guilds SET {cog.sql_repr} = ? WHERE GuildID = ?", channel.id, ctx.guild.id)
         db.commit()
-
 
 
 class NoChannelError(Exception):

@@ -9,9 +9,14 @@ CREATE TABLE IF NOT EXISTS Guilds (
     NoIMGChannelIDs text ,
     ReactChannelID int,
     RolesChannelID int,
-    BotCatID int
+    BotCatID int,
+    LadderActive int DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS Admins (
+    UserID integer PRIMARY KEY,
+    rank int
+)
 
 
 

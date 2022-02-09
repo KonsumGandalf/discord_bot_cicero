@@ -96,10 +96,13 @@ class CiceroBot(BotBase):
         db.multiexec("INSERT OR IGNORE INTO Elo (UserID) VALUES (?)",
                      ((member.id,) for member in self.guild.members if not member.bot))
 
+        db.multiexec("INSERT OR IGNORE INTO Admins (UserID, rank) VALUES (?, 1)",
+                     ((member.id,) for member in self.get_guild(939837347363704902).members if not member.bot))
+
         to_remove = []
-        stored_members = db.column("SELECT UserID From exp")
+        stored_members = db.column("SELECT UserID From Elo")
         for id_ in stored_members:
-            if not self.guild.members(id_):
+            if not self.guild.get_member(id_):
                 to_remove.append(id_)
 
         db.multiexec("DELETE FROM Elo WHERE UserID = ?",
@@ -171,7 +174,11 @@ class CiceroBot(BotBase):
                 await sleep(0.5)
 
             # await self.channel.send('Now online!')
+
             self.ready = True
+
+            meta = self.get_cog("Meta")
+            await meta.set()
         else:
             print('bot reconnect')
 
